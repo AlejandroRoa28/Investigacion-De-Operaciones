@@ -1,116 +1,144 @@
 package main.java.com.simplexanddualsolver.solver;
-
-import main.java.com.simplexanddualsolver.model.ModeloProblema;
+import main.java.com.simplexanddualsolver.model.FormaEstandar;
 import main.java.com.simplexanddualsolver.solution.Solucion;
 
-public class SimplexSolver {
+public class SimplexSolver implements MotorSolver {
 
-    private static final double EPS = 1e-9;
+    private double[][] tabla;
+    private int[] base;
+    private int numVariablesOriginales;
+    private int numRestricciones;
 
-    public Solucion resolver(ModeloProblema modelo) {
-        // Por simplicidad: asumimos que ya está en forma estándar
-        // (todas las restricciones <= y b >= 0; si no, usarás DualSimplexSolver).
-        double[][] A = modelo.getCoefRestricciones();
-        double[] b = modelo.getLadosDerechos();
-        double[] c = modelo.getCoefObjetivo();
+    @Override
+    public void resolver(FormaEstandar forma) {
+        // 1. Copiar la tabla y base inicial
+        this.tabla = copiarTabla(forma.obtenerTablaInicial());
+        this.base = forma.obtenerBaseInicial().clone();
+        this.numVariablesOriginales = forma.getNumVariablesOriginales();
+        this.numRestricciones = forma.getNumRestricciones();
 
-        int m = b.length;        // restricciones
-        int n = c.length;        // variables
-
-        // Tabla: m filas de restricciones + 1 fila objetivo
-        // n + m variables (originales + holguras) + 1 columna RHS
-        double[][] tab = new double[m + 1][n + m + 1];
-
-        // Copiar A y b
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                tab[i][j] = A[i][j];
+        // 2. Iterar hasta óptimo
+        while (!esOptima()) {
+            int colEntrante = seleccionarColumnaEntrante();
+            
+            // Verificar si es no acotado
+            if (colEntrante == -1) {
+                break; // problema no acotado o ya óptimo
             }
-            tab[i][n + i] = 1.0;     // holgura
-            tab[i][n + m] = b[i];    // RHS
-        }
-
-        // Fila objetivo (maximizar)
-        for (int j = 0; j < n; j++) {
-            tab[m][j] = -c[j];
-        }
-
-        // Iteraciones simplex
-        while (true) {
-            int col = columnaEntrada(tab[m]);
-            if (col == -1) {
-                // Óptimo
+            
+            int filaSaliente = seleccionarFilaSaliente(colEntrante);
+            
+            if (filaSaliente == -1) {
+                // Problema no acotado
                 break;
             }
-            int row = filaSalida(tab, col);
-            if (row == -1) {
-                return new Solucion(null, Double.POSITIVE_INFINITY, "NO_ACOTADA");
-            }
-            pivot(tab, row, col);
+            
+            realizarPivoteo(filaSaliente, colEntrante);
+            
+            // Actualizar base
+            base[filaSaliente] = colEntrante;
         }
-
-        double[] x = new double[n];
-        for (int j = 0; j < n; j++) {
-            int filaBasica = filaBasica(tab, j, m);
-            if (filaBasica != -1) {
-                x[j] = tab[filaBasica][n + m];
-            }
-        }
-        double z = tab[m][n + m];
-        return new Solucion(x, z, "OPTIMA");
     }
 
-    private int columnaEntrada(double[] filaObj) {
-        int col = -1;
-        for (int j = 0; j < filaObj.length - 1; j++) {
-            if (filaObj[j] < -EPS && (col == -1 || filaObj[j] < filaObj[col])) {
-                col = j;
+    @Override
+    public Solucion obtenerSolucion() {
+        // Extraer valores de las variables básicas
+        double[] valoresVariables = new double[numVariablesOriginales];
+        
+        for (int i = 0; i < numRestricciones; i++) {
+            int varBasica = base[i];
+            if (varBasica < numVariablesOriginales) {
+                int colB = tabla[0].length - 1; // última columna es b
+                valoresVariables[varBasica] = tabla[i][colB];
             }
         }
-        return col;
+        
+        // Valor de Z está en la última fila, última columna
+        int filaZ = tabla.length - 1;
+        int colB = tabla[0].length - 1;
+        double valorZ = tabla[filaZ][colB];
+        
+        return new Solucion(valoresVariables, valorZ, "OPTIMA", tabla);
     }
 
-    private int filaSalida(double[][] tab, int col) {
-        int m = tab.length - 1;
-        int rhs = tab[0].length - 1;
-        int fila = -1;
-        double mejor = Double.POSITIVE_INFINITY;
-        for (int i = 0; i < m; i++) {
-            if (tab[i][col] > EPS) {
-                double ratio = tab[i][rhs] / tab[i][col];
-                if (ratio < mejor - EPS) {
-                    mejor = ratio;
-                    fila = i;
+    private boolean esOptima() {
+        int filaZ = tabla.length - 1; // última fila es Z
+        int numCols = tabla[0].length - 1; // sin contar columna b
+        
+        // Para MAX: óptimo si todos los coeficientes en fila Z son >= 0
+        for (int j = 0; j < numCols; j++) {
+            if (tabla[filaZ][j] < -1e-10) { // tolerancia numérica
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int seleccionarColumnaEntrante() {
+        int filaZ = tabla.length - 1;
+        int numCols = tabla[0].length - 1; // sin columna b
+        
+        int colEntrante = -1;
+        double valorMin = 0;
+        
+        // Buscar el coeficiente más negativo en fila Z (para MAX)
+        for (int j = 0; j < numCols; j++) {
+            if (tabla[filaZ][j] < valorMin) {
+                valorMin = tabla[filaZ][j];
+                colEntrante = j;
+            }
+        }
+        
+        return colEntrante; // -1 si no hay negativo (ya es óptimo)
+    }
+
+    private int seleccionarFilaSaliente(int colEntrante) {
+        int colB = tabla[0].length - 1; // columna de b
+        int filaSaliente = -1;
+        double minRatio = Double.MAX_VALUE;
+        
+        // Prueba de la razón mínima
+        for (int i = 0; i < numRestricciones; i++) {
+            double coef = tabla[i][colEntrante];
+            
+            if (coef > 1e-10) { // solo consideramos coeficientes positivos
+                double ratio = tabla[i][colB] / coef;
+                
+                if (ratio < minRatio) {
+                    minRatio = ratio;
+                    filaSaliente = i;
                 }
             }
         }
-        return fila;
+        
+        return filaSaliente; // -1 si no hay coeficiente positivo (no acotado)
     }
 
-    private void pivot(double[][] tab, int row, int col) {
-        int m = tab.length;
-        int n = tab[0].length;
-        double p = tab[row][col];
-        for (int j = 0; j < n; j++) tab[row][j] /= p;
-        for (int i = 0; i < m; i++) {
-            if (i == row) continue;
-            double factor = tab[i][col];
-            for (int j = 0; j < n; j++) {
-                tab[i][j] -= factor * tab[row][j];
+    private void realizarPivoteo(int filaPivote, int colPivote) {
+        double pivote = tabla[filaPivote][colPivote];
+        
+        // 1. Dividir fila pivote por el elemento pivote
+        for (int j = 0; j < tabla[0].length; j++) {
+            tabla[filaPivote][j] /= pivote;
+        }
+        
+        // 2. Hacer ceros en el resto de la columna pivote
+        for (int i = 0; i < tabla.length; i++) {
+            if (i != filaPivote) {
+                double factor = tabla[i][colPivote];
+                for (int j = 0; j < tabla[0].length; j++) {
+                    tabla[i][j] -= factor * tabla[filaPivote][j];
+                }
+
             }
         }
     }
 
-    private int filaBasica(double[][] tab, int col, int m) {
-        int fila = -1;
-        for (int i = 0; i < m; i++) {
-            if (Math.abs(tab[i][col] - 1.0) < EPS) {
-                if (fila == -1) fila = i;
-                else return -1; // no es básica
-            } else if (Math.abs(tab[i][col]) > EPS) {
-                return -1;
-            }
+    private double[][] copiarTabla(double[][] original) {
+        double[][] copia = new double[original.length][original[0].length];
+        for (int i = 0; i < original.length; i++) {
+            System.arraycopy(original[i], 0, copia[i], 0, original[i].length);
         }
-        return fila;
+        return copia;
     }
 }
