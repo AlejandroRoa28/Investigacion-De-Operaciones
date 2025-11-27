@@ -13,6 +13,8 @@ public class FormaEstandar {
 
     private int[] baseInicial;
 
+    private int[] columnasHolgura;
+
     public void convertirAEstandar(ModeloProblema modelo) {
     double[][] A = modelo.obtenerMatrizA();
     double[] b = modelo.obtenerVectorB();
@@ -40,7 +42,8 @@ public class FormaEstandar {
             throw new IllegalArgumentException("Tipo de restricción no soportado: " + tipo);
         }
     }
-
+    columnasHolgura = new int[numHolgura];
+    
     // 2) Tamaños
     int columnasTotales = numVariablesOriginales
                         + numHolgura
@@ -73,8 +76,8 @@ public class FormaEstandar {
             int colS = inicioHolguras + contadorHolgura;
             tablaSimplexInicial[i][colS] = 1.0;
             baseInicial[i] = colS;
+            columnasHolgura[contadorHolgura] = colS;
             contadorHolgura++;
-
         } else if (">=".equals(tipo)) {
             int colE = inicioExcesos + contadorExceso;
             tablaSimplexInicial[i][colE] = -1.0;
@@ -131,5 +134,9 @@ public class FormaEstandar {
     public int getNumArtificial() {
         return numArtificial;
     }
+    public int[] getColumnasHolgura() {
+    return columnasHolgura;
+}
+
 }
 
