@@ -34,4 +34,6 @@ public class ModeloProblema {
     public double[] getLadosDerechos() { return ladosDerechos; }
     public String[] getTiposRestriccion() { return tiposRestriccion; }
     public boolean isEsMaximizacion() { return esMaximizacion; }
+    // cambio de prueba
+
 }
