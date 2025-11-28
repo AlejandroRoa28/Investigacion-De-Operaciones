@@ -38,5 +38,10 @@ public class Solucion {
         }
         return sb.toString();
     }
+
+    public int[] getVariablesBasicas() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getVariablesBasicas'");
+    }
 }
 
