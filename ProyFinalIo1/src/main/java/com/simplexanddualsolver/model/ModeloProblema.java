@@ -6,31 +6,31 @@ package main.java.com.simplexanddualsolver.model;
  */
 public class ModeloProblema {
 
-    // ==================== ATRIBUTOS SEGÚN UML ====================
+   
     private double[][] A;        // Matriz de restricciones
     private double[] b;          // Vector lado derecho
     private double[] c;          // Vector función objetivo
     private int numVariables;    // Número de variables
     private int numRestricciones; // Número de restricciones
+    private String[] tiposRestricciones; // NUEVO
 
-    // ==================== CONSTRUCTORES ====================
-
-    /**
-     * Constructor vacío
-     */
     public ModeloProblema() {
     }
 
-    /**
-     * Constructor con matrices A, b y c
-     */
-    public ModeloProblema(double[][] A, double[] b, double[] c) {
+    // Constructor completo, incluyendo tipos de restricción
+    public ModeloProblema(double[][] A, double[] b, double[] c, String[] tiposRestricciones) {
         this.A = A;
         this.b = b;
         this.c = c;
+        this.tiposRestricciones = tiposRestricciones;
 
         this.numRestricciones = A.length;
         this.numVariables = A[0].length;
+    }
+
+    // Si quieres mantener el constructor sin tipos:
+    public ModeloProblema(double[][] A, double[] b, double[] c) {
+        this(A, b, c, null);
     }
 
     // ==================== MÉTODOS DEL UML ====================
@@ -103,5 +103,13 @@ public class ModeloProblema {
 
     public int getNumRestricciones() {
         return numRestricciones;
+    }
+    public String[] getTiposRestricciones() {
+        return tiposRestricciones;
+    }
+
+    // Setter por si los quieres cargar después
+    public void setTiposRestricciones(String[] tiposRestricciones) {
+        this.tiposRestricciones = tiposRestricciones;
     }
 }

@@ -42,23 +42,27 @@ public class SimplexSolver implements MotorSolver {
 
     @Override
     public Solucion obtenerSolucion() {
-        // Extraer valores de las variables básicas
         double[] valoresVariables = new double[numVariablesOriginales];
-        
-        for (int i = 0; i < numRestricciones; i++) {
-            int varBasica = base[i];
-            if (varBasica < numVariablesOriginales) {
-                int colB = tabla[0].length - 1; // última columna es b
-                valoresVariables[varBasica] = tabla[i][colB];
-            }
-        }
-        
-        // Valor de Z está en la última fila, última columna
-        int filaZ = tabla.length - 1;
         int colB = tabla[0].length - 1;
-        double valorZ = tabla[filaZ][colB];
-        
-        return new Solucion(valoresVariables, valorZ, "OPTIMA", tabla);
+            for (int i = 0; i < numRestricciones; i++) {
+            int varBasica = base[i];
+                if (varBasica < numVariablesOriginales) {
+                valoresVariables[varBasica] = tabla[ i][colB];
+                }   
+            }   
+
+            int filaZ = tabla.length - 1;
+            double valorZ = tabla[filaZ][colB];
+
+            Solucion sol = new Solucion();
+            sol.setValoresVariables(valoresVariables);
+            sol.setValorZ(valorZ);
+            sol.setEstado("OPTIMA");
+            sol.setTablaFinal(copiarTabla(tabla));
+            sol.setVariablesBasicas(base.clone());
+            sol.setNumIteraciones(0); // si luego cuentas iteraciones, ajustas
+
+            return sol;
     }
 
     private boolean esOptima() {
