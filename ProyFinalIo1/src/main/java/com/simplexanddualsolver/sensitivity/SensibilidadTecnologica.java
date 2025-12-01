@@ -17,8 +17,19 @@ public class SensibilidadTecnologica {
         return tablaFinal[filaZ][j];
     }
 
+    // Vector completo de costos reducidos
+    public double[] getCostosReducidos() {
+        int n = tablaFinal[0].length - 1; // sin la columna b
+        double[] cr = new double[n];
+        for (int j = 0; j < n; j++) {
+            cr[j] = tablaFinal[filaZ][j];
+        }
+        return cr;
+    }
+
     // ¿La variable j es básica en la solución óptima?
     public boolean esVariableBasica(int j) {
+        if (baseFinal == null) return false;
         for (int colBasica : baseFinal) {
             if (colBasica == j) {
                 return true;

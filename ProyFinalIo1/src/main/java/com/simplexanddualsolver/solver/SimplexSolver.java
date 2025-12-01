@@ -8,62 +8,57 @@ public class SimplexSolver implements MotorSolver {
     private int[] base;
     private int numVariablesOriginales;
     private int numRestricciones;
+    private int iteraciones;
+
 
     @Override
     public void resolver(FormaEstandar forma) {
-        // 1. Copiar la tabla y base inicial
         this.tabla = copiarTabla(forma.obtenerTablaInicial());
         this.base = forma.obtenerBaseInicial().clone();
         this.numVariablesOriginales = forma.getNumVariablesOriginales();
         this.numRestricciones = forma.getNumRestricciones();
+        this.iteraciones = 0;
 
-        // 2. Iterar hasta óptimo
         while (!esOptima()) {
             int colEntrante = seleccionarColumnaEntrante();
-            
-            // Verificar si es no acotado
-            if (colEntrante == -1) {
-                break; // problema no acotado o ya óptimo
-            }
-            
+            if (colEntrante == -1) break;
+
             int filaSaliente = seleccionarFilaSaliente(colEntrante);
-            
-            if (filaSaliente == -1) {
-                // Problema no acotado
-                break;
-            }
-            
+            if (filaSaliente == -1) break;
+
             realizarPivoteo(filaSaliente, colEntrante);
-            
-            // Actualizar base
             base[filaSaliente] = colEntrante;
+            iteraciones++;
         }
     }
+
 
     @Override
     public Solucion obtenerSolucion() {
         double[] valoresVariables = new double[numVariablesOriginales];
         int colB = tabla[0].length - 1;
-            for (int i = 0; i < numRestricciones; i++) {
+
+        for (int i = 0; i < numRestricciones; i++) {
             int varBasica = base[i];
-                if (varBasica < numVariablesOriginales) {
-                valoresVariables[varBasica] = tabla[ i][colB];
-                }   
-            }   
+            if (varBasica < numVariablesOriginales) {
+                valoresVariables[varBasica] = tabla[i][colB];
+            }
+        }
 
-            int filaZ = tabla.length - 1;
-            double valorZ = tabla[filaZ][colB];
+        int filaZ = tabla.length - 1;
+        double valorZ = tabla[filaZ][colB];
 
-            Solucion sol = new Solucion();
-            sol.setValoresVariables(valoresVariables);
-            sol.setValorZ(valorZ);
-            sol.setEstado("OPTIMA");
-            sol.setTablaFinal(copiarTabla(tabla));
-            sol.setVariablesBasicas(base.clone());
-            sol.setNumIteraciones(0); // si luego cuentas iteraciones, ajustas
+        Solucion sol = new Solucion();
+        sol.setValoresVariables(valoresVariables);
+        sol.setValorZ(valorZ);
+        sol.setEstado("OPTIMA");
+        sol.setTablaFinal(copiarTabla(tabla));
+        sol.setVariablesBasicas(base.clone());
+        sol.setNumIteraciones(iteraciones);  // usar el contador real
 
-            return sol;
+        return sol;
     }
+
 
     private boolean esOptima() {
         int filaZ = tabla.length - 1; // última fila es Z
