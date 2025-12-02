@@ -2,6 +2,7 @@ package main.java.com.simplexanddualsolver.solver;
 
 import main.java.com.simplexanddualsolver.model.FormaEstandar;
 import main.java.com.simplexanddualsolver.solution.Solucion;
+import main.java.com.simplexanddualsolver.solution.Solucion.IteracionSimplex;
 
 /**
  * Implementación del método Dual Simplex para resolver problemas de Programación Lineal
@@ -16,37 +17,38 @@ import main.java.com.simplexanddualsolver.solution.Solucion;
  */
 public class DualSimplexSolver implements MotorSolver {
     
-    private double[][] tabla;           // Tabla del Simplex
-    private int[] base;                 // Variables básicas (índices)
-    private int numFilas;               // Número de filas (restricciones + fila Z)
-    private int numColumnas;            // Número de columnas (variables + b)
-    private Solucion solucionActual;    // Solución encontrada
-    private int iteraciones;            // Contador de iteraciones
+    private double[][] tabla;
+    private int[] base;
+    private int numFilas;
+    private int numColumnas;
+    private Solucion solucionActual;
+    private int iteraciones;
     
-    private static final double EPSILON = 1e-10;  // Tolerancia para comparaciones
-    private static final int MAX_ITERACIONES = 1000;  // Límite de iteraciones
+    private static final double EPSILON = 1e-10;
+    private static final int MAX_ITERACIONES = 1000;
     
-    /**
-     * Constructor
-     */
     public DualSimplexSolver() {
         this.iteraciones = 0;
     }
     
-    /**
-     * Resuelve el problema usando el método Dual Simplex
-     * @param forma FormaEstandar que contiene la tabla inicial y la base
-     */
     @Override
     public void resolver(FormaEstandar forma) {
-        // Obtener tabla inicial y base desde FormaEstandar
+        // Inicializar
         this.tabla = copiarTabla(forma.obtenerTablaInicial());
         this.base = forma.obtenerBaseInicial().clone();
         this.numFilas = tabla.length;
         this.numColumnas = tabla[0].length;
         this.iteraciones = 0;
         
+        // Crear solución y establecer método usado
+        solucionActual = new Solucion();
+        solucionActual.setMetodoUsado("Dual Simplex");
+        
         System.out.println("\n=== INICIANDO DUAL SIMPLEX ===");
+        
+        // Guardar iteración 0 (tabla inicial)
+        guardarIteracion(0, -1, -1, "Tabla inicial del Dual Simplex");
+        
         imprimirTabla(0);
         
         // Iterar hasta encontrar solución factible
@@ -59,14 +61,14 @@ public class DualSimplexSolver implements MotorSolver {
             int filaSaliente = seleccionarFilaSaliente();
             
             if (filaSaliente == -1) {
-                // No hay valores negativos, ya es factible
-                solucionActual = extraerSolucion();
-                solucionActual.setEstado("OPTIMA");
+                // Ya es factible
+                finalizarSolucion("OPTIMA");
                 return;
             }
             
+            String variableSale = "x" + (base[filaSaliente] + 1);
             System.out.println("Fila saliente: " + filaSaliente + 
-                             " (variable x" + (base[filaSaliente]+1) + 
+                             " (variable " + variableSale + 
                              " = " + tabla[filaSaliente][numColumnas-1] + ")");
             
             // Paso 2: Seleccionar columna entrante (prueba del cociente dual)
@@ -75,14 +77,25 @@ public class DualSimplexSolver implements MotorSolver {
             if (columnaEntrante == -1) {
                 // Problema infactible
                 System.out.println("\n¡Problema INFACTIBLE! No hay columna entrante válida.");
-                solucionActual = new Solucion();
+                guardarIteracion(iteraciones, filaSaliente, -1, 
+                    "INFACTIBLE: No existe columna entrante válida para la fila " + filaSaliente);
                 solucionActual.setEstado("INFACTIBLE");
+                solucionActual.setNumIteraciones(iteraciones);
                 return;
             }
             
-            System.out.println("Columna entrante: " + columnaEntrante + " (variable x" + (columnaEntrante+1) + ")");
-            System.out.println("Pivote: tabla[" + filaSaliente + "][" + columnaEntrante + "] = " + 
-                             tabla[filaSaliente][columnaEntrante]);
+            String variableEntra = "x" + (columnaEntrante + 1);
+            double elementoPivote = tabla[filaSaliente][columnaEntrante];
+            
+            System.out.println("Columna entrante: " + columnaEntrante + " (variable " + variableEntra + ")");
+            System.out.println("Pivote: tabla[" + filaSaliente + "][" + columnaEntrante + "] = " + elementoPivote);
+            
+            // Guardar estado ANTES del pivoteo (para mostrar qué se va a hacer)
+            String descripcion = String.format(
+                "Sale: %s (fila %d, valor=%.4f) | Entra: %s (col %d) | Pivote: %.4f",
+                variableSale, filaSaliente, tabla[filaSaliente][numColumnas-1],
+                variableEntra, columnaEntrante, elementoPivote
+            );
             
             // Paso 3: Realizar pivoteo
             realizarPivoteo(filaSaliente, columnaEntrante);
@@ -90,39 +103,91 @@ public class DualSimplexSolver implements MotorSolver {
             // Paso 4: Actualizar base
             base[filaSaliente] = columnaEntrante;
             
+            // Guardar iteración DESPUÉS del pivoteo
+            guardarIteracionCompleta(iteraciones, filaSaliente, columnaEntrante, 
+                                     variableSale, variableEntra, elementoPivote, descripcion);
+            
             imprimirTabla(iteraciones);
         }
         
-        // Verificar si se alcanzó el límite de iteraciones
+        // Verificar límite de iteraciones
         if (iteraciones >= MAX_ITERACIONES) {
             System.out.println("\n¡ADVERTENCIA! Se alcanzó el límite de iteraciones.");
-            solucionActual = new Solucion();
             solucionActual.setEstado("NO_CONVERGENTE");
+            solucionActual.setNumIteraciones(iteraciones);
             return;
         }
         
-        // Extraer solución final
-        solucionActual = extraerSolucion();
-        solucionActual.setEstado("OPTIMA");
+        // Solución óptima encontrada
+        finalizarSolucion("OPTIMA");
         
         System.out.println("\n=== DUAL SIMPLEX FINALIZADO ===");
         System.out.println("Iteraciones totales: " + iteraciones);
     }
     
     /**
-     * PASO 1: Seleccionar fila saliente
-     * Buscar la variable básica con el valor más negativo (más infactible)
-     * @return Índice de la fila saliente, o -1 si ya es factible
+     * Guarda una iteración en el historial (versión simple)
      */
+    private void guardarIteracion(int numIter, int filaSaliente, int colEntrante, String descripcion) {
+        IteracionSimplex iter = new IteracionSimplex(numIter);
+        iter.setTabla(tabla);
+        iter.setBase(base);
+        iter.setFilaSaliente(filaSaliente);
+        iter.setColumnaEntrante(colEntrante);
+        iter.setDescripcion(descripcion);
+        solucionActual.agregarIteracion(iter);
+    }
+    
+    /**
+     * Guarda una iteración con información completa del pivoteo
+     */
+    private void guardarIteracionCompleta(int numIter, int filaSaliente, int colEntrante,
+                                          String varSale, String varEntra, 
+                                          double pivote, String descripcion) {
+        IteracionSimplex iter = new IteracionSimplex(numIter);
+        iter.setTabla(tabla);
+        iter.setBase(base);
+        iter.setFilaSaliente(filaSaliente);
+        iter.setColumnaEntrante(colEntrante);
+        iter.setVariableSale(varSale);
+        iter.setVariableEntra(varEntra);
+        iter.setElementoPivote(pivote);
+        iter.setDescripcion(descripcion);
+        solucionActual.agregarIteracion(iter);
+    }
+    
+    /**
+     * Finaliza la solución extrayendo los valores finales
+     */
+    private void finalizarSolucion(String estado) {
+        // Valores de variables
+        double[] valores = new double[numColumnas - 1];
+        for (int i = 0; i < numFilas - 1; i++) {
+            int varBasica = base[i];
+            if (varBasica < valores.length) {
+                valores[varBasica] = tabla[i][numColumnas - 1];
+            }
+        }
+        
+        double valorZ = tabla[numFilas - 1][numColumnas - 1];
+        
+        solucionActual.setValoresVariables(valores);
+        solucionActual.setValorZ(valorZ);
+        solucionActual.setTablaFinal(copiarTabla(tabla));
+        solucionActual.setVariablesBasicas(base.clone());
+        solucionActual.setNumIteraciones(iteraciones);
+        solucionActual.setEstado(estado);
+        
+        // Guardar iteración final
+        guardarIteracion(iteraciones, -1, -1, "Solución " + estado + " encontrada. Z = " + valorZ);
+    }
+    
     private int seleccionarFilaSaliente() {
         int filaSaliente = -1;
         double valorMasNegativo = 0.0;
         
-        // Recorrer todas las filas excepto la fila Z (última)
         for (int i = 0; i < numFilas - 1; i++) {
-            double valorB = tabla[i][numColumnas - 1];  // Última columna es b
-            
-            // Si b[i] es negativo y es el más negativo hasta ahora
+            double valorB = tabla[i][numColumnas - 1];
             if (valorB < -EPSILON && valorB < valorMasNegativo) {
                 valorMasNegativo = valorB;
                 filaSaliente = i;
@@ -132,32 +197,18 @@ public class DualSimplexSolver implements MotorSolver {
         return filaSaliente;
     }
     
-    /**
-     * PASO 2: Seleccionar columna entrante (Prueba del cociente dual)
-     * 
-     * Para la fila saliente k, calcular:
-     * cociente[j] = Z[j] / tabla[k][j]   para todo j donde tabla[k][j] < 0
-     * 
-     * Seleccionar j con el cociente MÍNIMO
-     * 
-     * @param filaSaliente Fila que sale de la base
-     * @return Índice de la columna entrante, o -1 si no hay columna válida
-     */
     private int seleccionarColumnaEntrante(int filaSaliente) {
         int columnaEntrante = -1;
         double cocienteMinimo = Double.POSITIVE_INFINITY;
-        int filaZ = numFilas - 1;  // Última fila es Z
+        int filaZ = numFilas - 1;
         
-        // Recorrer todas las columnas excepto la última (b)
         for (int j = 0; j < numColumnas - 1; j++) {
             double valorEnFila = tabla[filaSaliente][j];
             
-            // Solo considerar si el valor es NEGATIVO
             if (valorEnFila < -EPSILON) {
                 double valorZ = tabla[filaZ][j];
                 double cociente = valorZ / valorEnFila;
                 
-                // Buscar el cociente MÍNIMO (más negativo o menos positivo)
                 if (cociente < cocienteMinimo) {
                     cocienteMinimo = cociente;
                     columnaEntrante = j;
@@ -168,15 +219,6 @@ public class DualSimplexSolver implements MotorSolver {
         return columnaEntrante;
     }
     
-    /**
-     * PASO 3: Realizar pivoteo
-     * 
-     * 1. Dividir fila pivote por elemento pivote
-     * 2. Hacer ceros en el resto de la columna pivote
-     * 
-     * @param filaPivote Fila del elemento pivote
-     * @param columnaPivote Columna del elemento pivote
-     */
     private void realizarPivoteo(int filaPivote, int columnaPivote) {
         double elementoPivote = tabla[filaPivote][columnaPivote];
         
@@ -185,12 +227,10 @@ public class DualSimplexSolver implements MotorSolver {
             return;
         }
         
-        // 1. Dividir toda la fila pivote por el elemento pivote
         for (int j = 0; j < numColumnas; j++) {
             tabla[filaPivote][j] /= elementoPivote;
         }
         
-        // 2. Hacer ceros en el resto de la columna pivote
         for (int i = 0; i < numFilas; i++) {
             if (i != filaPivote) {
                 double factor = tabla[i][columnaPivote];
@@ -201,11 +241,6 @@ public class DualSimplexSolver implements MotorSolver {
         }
     }
     
-    /**
-     * Verifica si la solución actual es factible
-     * Una solución es factible si todos los valores de b son ≥ 0
-     * @return true si es factible, false en caso contrario
-     */
     private boolean esFactible() {
         for (int i = 0; i < numFilas - 1; i++) {
             if (tabla[i][numColumnas - 1] < -EPSILON) {
@@ -215,39 +250,6 @@ public class DualSimplexSolver implements MotorSolver {
         return true;
     }
     
-    /**
-     * Extrae la solución de la tabla final
-     * @return Objeto Solucion con los resultados
-     */
-    private Solucion extraerSolucion() {
-        Solucion solucion = new Solucion();
-        
-        // Inicializar valores de todas las variables en 0
-        double[] valores = new double[numColumnas - 1];
-        
-        // Asignar valores a variables básicas
-        for (int i = 0; i < numFilas - 1; i++) {
-            int varBasica = base[i];
-            if (varBasica < valores.length) {
-                valores[varBasica] = tabla[i][numColumnas - 1];
-            }
-        }
-        
-        // Obtener valor de Z (última fila, última columna)
-        double valorZ = tabla[numFilas - 1][numColumnas - 1];
-        
-        solucion.setValoresVariables(valores);
-        solucion.setValorZ(valorZ);
-        solucion.setTablaFinal(copiarTabla(tabla));
-        solucion.setVariablesBasicas(base.clone());
-        solucion.setNumIteraciones(iteraciones);
-        
-        return solucion;
-    }
-    
-    /**
-     * Copia una tabla (matriz)
-     */
     private double[][] copiarTabla(double[][] original) {
         int filas = original.length;
         int columnas = original[0].length;
@@ -260,9 +262,6 @@ public class DualSimplexSolver implements MotorSolver {
         return copia;
     }
     
-    /**
-     * Imprime la tabla actual (para depuración)
-     */
     private void imprimirTabla(int iteracion) {
         System.out.println("\nTabla en iteración " + iteracion + ":");
         System.out.println("Base: " + java.util.Arrays.toString(base));

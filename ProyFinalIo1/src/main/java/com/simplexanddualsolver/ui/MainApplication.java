@@ -14,6 +14,7 @@ public class MainApplication {
 
     private static ModelInputFrame modelInputFrame;
     private static ResultsFrame resultsFrame;
+    private static ProcesoResolucionFrame procesoResolucionFrame;  // NUEVO
     private static SensibilidadRecursosFrame sensibilidadRecursosFrame;
     private static SensibilidadFOFrame sensibilidadFOFrame;
     private static SensibilidadTecnologicaFrame sensibilidadTecnologicaFrame;
@@ -63,11 +64,28 @@ public class MainApplication {
             resultsFrame = new ResultsFrame();
             configurarVentanaSecundaria(resultsFrame);
         }
-        solucionActual = solucion; // por si viene actualizado
+        solucionActual = solucion;
         resultsFrame.setSolucion(solucion);
         resultsFrame.setVisible(true);
         if (modelInputFrame != null) {
             modelInputFrame.setVisible(false);
+        }
+    }
+
+    // NUEVO: Mostrar ventana de proceso de resolución
+    public static void showProcesoResolucionFrame() {
+        if (procesoResolucionFrame == null) {
+            procesoResolucionFrame = new ProcesoResolucionFrame();
+            configurarVentanaSecundaria(procesoResolucionFrame);
+        }
+
+        if (solucionActual != null) {
+            procesoResolucionFrame.setSolucion(solucionActual);
+        }
+
+        procesoResolucionFrame.setVisible(true);
+        if (resultsFrame != null) {
+            resultsFrame.setVisible(false);
         }
     }
 
@@ -164,9 +182,11 @@ public class MainApplication {
     }
 
     private static void volverAVentanaAnterior(JFrame ventanaActual) {
+        // ACTUALIZADO: incluir procesoResolucionFrame
         if (ventanaActual == sensibilidadRecursosFrame
                 || ventanaActual == sensibilidadFOFrame
-                || ventanaActual == sensibilidadTecnologicaFrame) {
+                || ventanaActual == sensibilidadTecnologicaFrame
+                || ventanaActual == procesoResolucionFrame) {
 
             if (resultsFrame != null) {
                 resultsFrame.setVisible(true);
@@ -180,6 +200,7 @@ public class MainApplication {
 
     private static void cerrarVentanasSecundarias() {
         if (resultsFrame != null) resultsFrame.setVisible(false);
+        if (procesoResolucionFrame != null) procesoResolucionFrame.setVisible(false);  // NUEVO
         if (sensibilidadRecursosFrame != null) sensibilidadRecursosFrame.setVisible(false);
         if (sensibilidadFOFrame != null) sensibilidadFOFrame.setVisible(false);
         if (sensibilidadTecnologicaFrame != null) sensibilidadTecnologicaFrame.setVisible(false);
@@ -195,6 +216,7 @@ public class MainApplication {
         if (confirm == JOptionPane.YES_OPTION) {
             if (modelInputFrame != null) modelInputFrame.dispose();
             if (resultsFrame != null) resultsFrame.dispose();
+            if (procesoResolucionFrame != null) procesoResolucionFrame.dispose();  // NUEVO
             if (sensibilidadRecursosFrame != null) sensibilidadRecursosFrame.dispose();
             if (sensibilidadFOFrame != null) sensibilidadFOFrame.dispose();
             if (sensibilidadTecnologicaFrame != null) sensibilidadTecnologicaFrame.dispose();
@@ -206,6 +228,11 @@ public class MainApplication {
         if (resultsFrame != null) {
             resultsFrame.setVisible(true);
         }
+        // Ocultar otras ventanas secundarias
+        if (procesoResolucionFrame != null) procesoResolucionFrame.setVisible(false);
+        if (sensibilidadRecursosFrame != null) sensibilidadRecursosFrame.setVisible(false);
+        if (sensibilidadFOFrame != null) sensibilidadFOFrame.setVisible(false);
+        if (sensibilidadTecnologicaFrame != null) sensibilidadTecnologicaFrame.setVisible(false);
     }
 
     public static void volverAIngresoPrincipal() {

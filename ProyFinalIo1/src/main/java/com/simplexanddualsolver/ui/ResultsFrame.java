@@ -1,11 +1,10 @@
 package main.java.com.simplexanddualsolver.ui;
 
-import main.java.com.simplexanddualsolver.solution.Solucion;
-
+import java.awt.*;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import javax.swing.table.DefaultTableModel;
-import java.awt.*;
+import main.java.com.simplexanddualsolver.solution.Solucion;
 
 public class ResultsFrame extends JFrame {
 
@@ -14,8 +13,10 @@ public class ResultsFrame extends JFrame {
     private JLabel lblEstado;
     private JLabel lblValorZ;
     private JLabel lblIteraciones;
+    private JLabel lblMetodo;  // NUEVO: mostrar qué método se usó
     private JTable tablaVariables;
     private JTable tablaVariablesBasicas;
+    private JButton btnVerProceso;  // NUEVO: botón para ver proceso
     private JButton btnSensibilidadRecursos;
     private JButton btnSensibilidadFO;
     private JButton btnSensibilidadTecnologica;
@@ -27,7 +28,7 @@ public class ResultsFrame extends JFrame {
     public ResultsFrame() {
         setTitle("Resultados de la Solución - Programa Lineal");
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setSize(900, 700);
+        setSize(950, 750);
         setLocationRelativeTo(null);
 
         JPanel mainPanel = new JPanel();
@@ -64,6 +65,7 @@ public class ResultsFrame extends JFrame {
         ));
         panel.setLayout(new GridLayout(2, 2, 10, 10));
 
+        // Panel Estado
         JPanel panelEstado = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelEstado.add(new JLabel("Estado:"));
         lblEstado = new JLabel();
@@ -71,6 +73,7 @@ public class ResultsFrame extends JFrame {
         lblEstado.setForeground(Color.BLUE);
         panelEstado.add(lblEstado);
 
+        // Panel Valor Z
         JPanel panelZ = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelZ.add(new JLabel("Valor Óptimo (Z):"));
         lblValorZ = new JLabel();
@@ -78,15 +81,25 @@ public class ResultsFrame extends JFrame {
         lblValorZ.setForeground(new Color(0, 100, 0));
         panelZ.add(lblValorZ);
 
+        // Panel Iteraciones
         JPanel panelIteraciones = new JPanel(new FlowLayout(FlowLayout.LEFT));
         panelIteraciones.add(new JLabel("Iteraciones:"));
         lblIteraciones = new JLabel();
         lblIteraciones.setFont(new Font("Arial", Font.BOLD, 12));
         panelIteraciones.add(lblIteraciones);
 
+        // NUEVO: Panel Método usado
+        JPanel panelMetodo = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        panelMetodo.add(new JLabel("Método:"));
+        lblMetodo = new JLabel();
+        lblMetodo.setFont(new Font("Arial", Font.BOLD, 12));
+        lblMetodo.setForeground(new Color(128, 0, 128));
+        panelMetodo.add(lblMetodo);
+
         panel.add(panelEstado);
         panel.add(panelZ);
         panel.add(panelIteraciones);
+        panel.add(panelMetodo);
 
         return panel;
     }
@@ -136,8 +149,39 @@ public class ResultsFrame extends JFrame {
     }
 
     private JPanel crearPanelInferior() {
-        JPanel panel = new JPanel();
-        panel.setBorder(BorderFactory.createTitledBorder(
+        JPanel panelContenedor = new JPanel();
+        panelContenedor.setLayout(new BoxLayout(panelContenedor, BoxLayout.Y_AXIS));
+
+        // NUEVO: Panel para el botón "Ver Proceso"
+        JPanel panelProceso = new JPanel();
+        panelProceso.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(0, 100, 180)),
+                "Proceso de Resolución",
+                TitledBorder.LEFT,
+                TitledBorder.TOP,
+                new Font("Arial", Font.BOLD, 12),
+                new Color(0, 100, 180)
+        ));
+        panelProceso.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
+
+        btnVerProceso = new JButton("📊 Ver Proceso Paso a Paso");
+        btnVerProceso.setFont(new Font("Arial", Font.BOLD, 12));
+        btnVerProceso.setBackground(new Color(0, 100, 180));
+        btnVerProceso.setForeground(Color.WHITE);
+        btnVerProceso.setFocusPainted(false);
+        btnVerProceso.setToolTipText("Ver cómo se resolvió el problema iteración por iteración");
+        btnVerProceso.addActionListener(e -> abrirProcesoResolucion());
+
+        JLabel lblInfoProceso = new JLabel("Visualiza cada iteración del método Simplex o Dual Simplex");
+        lblInfoProceso.setFont(new Font("Arial", Font.ITALIC, 11));
+        lblInfoProceso.setForeground(Color.GRAY);
+
+        panelProceso.add(btnVerProceso);
+        panelProceso.add(lblInfoProceso);
+
+        // Panel de Sensibilidad (existente)
+        JPanel panelSensibilidad = new JPanel();
+        panelSensibilidad.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(255, 140, 0)),
                 "Análisis de Sensibilidad",
                 TitledBorder.LEFT,
@@ -145,7 +189,7 @@ public class ResultsFrame extends JFrame {
                 new Font("Arial", Font.BOLD, 12),
                 new Color(255, 140, 0)
         ));
-        panel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        panelSensibilidad.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 10));
 
         btnSensibilidadRecursos = new JButton("Sensibilidad de Recursos");
         setOptionalIcon(btnSensibilidadRecursos, "recursos.png", 24, 24);
@@ -162,18 +206,22 @@ public class ResultsFrame extends JFrame {
         btnVolver = new JButton("Volver al Ingreso");
         setOptionalIcon(btnVolver, "volver.png", 24, 24);
 
-        panel.add(btnSensibilidadRecursos);
-        panel.add(btnSensibilidadFO);
-        panel.add(btnSensibilidadTecnologica);
-        panel.add(Box.createHorizontalStrut(50));
-        panel.add(btnVolver);
+        panelSensibilidad.add(btnSensibilidadRecursos);
+        panelSensibilidad.add(btnSensibilidadFO);
+        panelSensibilidad.add(btnSensibilidadTecnologica);
+        panelSensibilidad.add(Box.createHorizontalStrut(50));
+        panelSensibilidad.add(btnVolver);
 
         btnSensibilidadRecursos.addActionListener(e -> abrirSensibilidadRecursos());
         btnSensibilidadFO.addActionListener(e -> abrirSensibilidadFO());
         btnSensibilidadTecnologica.addActionListener(e -> abrirSensibilidadTecnologica());
         btnVolver.addActionListener(e -> volverAIngreso());
 
-        return panel;
+        // Agregar ambos paneles al contenedor
+        panelContenedor.add(panelProceso);
+        panelContenedor.add(panelSensibilidad);
+
+        return panelContenedor;
     }
 
     private void setOptionalIcon(JButton button, String iconName, int width, int height) {
@@ -219,6 +267,10 @@ public class ResultsFrame extends JFrame {
         lblValorZ.setText(String.valueOf(solucion.getValorZ()));
         lblIteraciones.setText(String.valueOf(solucion.getNumIteraciones()));
 
+        // NUEVO: Mostrar método usado
+        String metodo = solucion.getMetodoUsado();
+        lblMetodo.setText(metodo != null ? metodo : "No especificado");
+
         DefaultTableModel modelVariables = (DefaultTableModel) tablaVariables.getModel();
         modelVariables.setRowCount(0);
 
@@ -246,6 +298,16 @@ public class ResultsFrame extends JFrame {
         btnSensibilidadRecursos.setEnabled(optima);
         btnSensibilidadFO.setEnabled(optima);
         btnSensibilidadTecnologica.setEnabled(optima);
+
+        // NUEVO: Habilitar botón de proceso solo si hay historial
+        boolean tieneHistorial = solucion.getTotalIteracionesGuardadas() > 0;
+        btnVerProceso.setEnabled(tieneHistorial);
+    }
+
+    // NUEVO: Abrir ventana de proceso de resolución
+    private void abrirProcesoResolucion() {
+        MainApplication.showProcesoResolucionFrame();
+        this.setVisible(false);
     }
 
     private void abrirSensibilidadRecursos() {
